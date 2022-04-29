@@ -1,0 +1,2 @@
+# Main web framework
+Django==4.0.3

@@ -1,0 +1,6 @@
+venv/
+htmlcov/
+.idea/
+
+db.sqlite3
+*__pycache__*
