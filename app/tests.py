@@ -13,12 +13,16 @@ class AppTestCase(TestCase):
 
     def assertResponseJsonEqualsTo(self, response, dictt):
         '''
-        An example would be
+        An example of a matching pair would be
         {'id': 'ea0212d3-abd6-406f-8c67-868e814a2436',
         'at': '2022-04-29T15:20:50.590Z'}
+        which has been deserialized from an actual response
+
         and
+
         {'id': UUID('ea0212d3-abd6-406f-8c67-868e814a2436',
         'at': datetime.datetime(2022, 4, 29, 15, 20, 50, 590566, tzinfo=datetime.timezone.utc))}
+        which was returned by some function
         '''
         self.assertEqual(
             response.json(),
@@ -42,12 +46,18 @@ class WalletCreationTestCase(AppTestCase):
         response = client.post('/api/v1/init', {"customer_xid": ""})
         self.assertResponseJsonEqualsTo(
             response,
-            {'status': 'failure', 'error': 'customer_xid must match format for uuid'}
+            {
+                'status': 'fail',
+                'data': {'customer_xid': 'customer_xid must match format for uuid'}
+            }
         )
         response = client.post('/api/v1/init', {"customer_xid": "a5a5a"})
         self.assertResponseJsonEqualsTo(
             response,
-            {'status': 'failure', 'error': 'customer_xid must match format for uuid'}
+            {
+                'status': 'fail',
+                'data': {'customer_xid': 'customer_xid must match format for uuid'}
+            }
         )
 
     def test_creating_wallet_with_existing_id_fails(self):
@@ -56,7 +66,10 @@ class WalletCreationTestCase(AppTestCase):
         response = client.post('/api/v1/init', {"customer_xid": "ea0212d3-abd6-406f-8c67-868e814a2436"})
         self.assertResponseJsonEqualsTo(
             response,
-            {'status': 'failure', 'error': 'Customer id exists'}
+            {
+                'status': 'fail', 
+                'data': {'customer_xid': 'Customer id exists'}
+            }
         )
 
 
@@ -81,8 +94,8 @@ class WalletTestCase(AppTestCase):
         self.assertResponseJsonEqualsTo(
             response,
             {
-                'status': 'failure',
-                'error': 'Wallet is disabled'
+                'status': 'fail',
+                'data': {'wallet': 'Wallet is disabled'}
             }
         )
 
@@ -126,8 +139,8 @@ class WalletEnablingTestCase(AppTestCase):
         self.assertResponseJsonEqualsTo(
             response,
             {
-                'status': 'failure',
-                'error': 'Already enabled'
+                'status': 'fail',
+                'data': {'wallet': 'Already enabled'}
             }
         )
 
@@ -182,8 +195,24 @@ class WalletDepositTestCase(AppTestCase):
         self.assertResponseJsonEqualsTo(
             response,
             {
-                'status': 'failure',
-                'error': 'Wallet is disabled'
+                'status': 'fail',
+                'data': {'wallet': 'Wallet is disabled'}
+            }
+        )
+
+    def test_depositing_with_malformed_data_fails(self):
+        wallet = Wallet.create("ea0212d3-abd6-406f-8c67-868e814a2436")
+        wallet.enable()
+        client = Client(HTTP_AUTHORIZATION=f'Token {wallet.token}')
+        response = client.post(
+            '/api/v1/wallet/deposits',
+            {'amount': 'not a number', 'reference_id': ''})
+        self.assertResponseJsonEqualsTo(
+            response,
+            {
+                'status': 'fail',
+                'data': {"amount": [{"message": "Enter a whole number.", "code": "invalid"}],
+                         "reference_id": [{"message": "This field is required.", "code": "required"}]}
             }
         )
 
@@ -222,10 +251,27 @@ class WalletWithdrawalTestCase(AppTestCase):
         self.assertResponseJsonEqualsTo(
             response,
             {
-                'status': 'failure',
-                'error': 'Wallet is disabled'
+                'status': 'fail',
+                'data': {'wallet': 'Wallet is disabled'}
             }
         )
+
+    def test_depositing_with_malformed_data_fails(self):
+        wallet = Wallet.create("ea0212d3-abd6-406f-8c67-868e814a2436")
+        wallet.enable()
+        client = Client(HTTP_AUTHORIZATION=f'Token {wallet.token}')
+        response = client.post(
+            '/api/v1/wallet/deposits',
+            {'amount': 'not a number', 'reference_id': ''})
+        self.assertResponseJsonEqualsTo(
+            response,
+            {
+                'status': 'fail',
+                'data': {"amount": [{"message": "Enter a whole number.", "code": "invalid"}],
+                         "reference_id": [{"message": "This field is required.", "code": "required"}]}
+            }
+        )
+
 
     def test_withdrawal_for_amount_exceeding_balance_fails(self):
         wallet = Wallet.create("ea0212d3-abd6-406f-8c67-868e814a2436")
@@ -239,7 +285,7 @@ class WalletWithdrawalTestCase(AppTestCase):
         self.assertResponseJsonEqualsTo(
             response,
             {
-                'status': 'failure',
-                'error': 'Insufficient balance'
+                'status': 'fail',
+                'data': {'wallet': 'Insufficient balance'}
             }
         )

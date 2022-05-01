@@ -84,7 +84,7 @@ class Transaction(models.Model):
     is_success = models.BooleanField()
     is_withdrawal = models.BooleanField()
     transacted_at = models.DateTimeField(auto_now_add=True)
-    # There are no user ids mentioned in request body in question, hence its not stored
+    # There are no user ids mentioned in request body in question, hence I assume transactions don't involve other users.
     # deposited_by = models.UUIDField(null=True)
     transaction_id = models.UUIDField(default=uuid.uuid4)
     reference_id = models.UUIDField()
@@ -95,6 +95,8 @@ class Transaction(models.Model):
             return {
                 'id': self.transaction_id,
                 'status': self.is_success,
+                # The example response indicates withdrawn_by and deposited_by are wallet owner
+                'withdrawn_by': self.wallet.owned_by,
                 'withdrawn_at': self.transacted_at,
                 'amount': self.amount,
                 'reference_id': self.reference_id
@@ -103,6 +105,8 @@ class Transaction(models.Model):
             return {
                 'id': self.transaction_id,
                 'status': self.is_success,
+                # The example response indicates withdrawn_by and deposited_by are wallet owner
+                'deposited_by': self.wallet.owned_by,
                 'deposited_at': self.transacted_at,
                 'amount': self.amount,
                 'reference_id': self.reference_id
